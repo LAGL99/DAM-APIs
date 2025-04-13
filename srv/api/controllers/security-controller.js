@@ -1,63 +1,90 @@
-// srv/api/controllers/security-controller.js
 const cds = require('@sap/cds');
 const svc = require('../services/security-service');
 
 class SecurityController extends cds.ApplicationService {
   async init() {
-    // 🔹 Catálogos
-    this.on('getAllCatalogsWithValues', async (req) => {
-      return svc.getAllCatalogsWithValues(req);
-    });
-    this.on('getCatalogByLabel', async (req) => {
-      return svc.getCatalogByLabel(req);
-    });
-    this.on('getCatalogByLabelAndValue', async (req) => {
-      return svc.getCatalogByLabelAndValue(req);
+    // ─── CATÁLOGOS ─────────────────────────────
+    this.on('catalogs', async (req) => {
+      return svc.catalogs(req);
     });
 
-    // 🔹 Usuarios
-    this.on('getAllUsers', async (req) => {
-      return svc.getAllUsers(req);
+    // ─── USUARIOS ─────────────────────────────
+    // GET: Obtener usuarios o un usuario específico (según query param "userid")
+    this.on('users', async (req) => {
+      return svc.users(req);
     });
-    this.on('getUserById', async (req) => {
-      return svc.getUserById(req);
-    });
-    this.on('createUser', async (req) => {
+
+    // POST: Crear usuario
+    this.on('createuser', async (req) => {
       return svc.createUser(req);
     });
-    this.on('updateUser', async (req) => {
+
+    // PATCH: Actualizar usuario (se espera que userid venga en params)
+    this.on('updateuser', async (req) => {
       return svc.updateUser(req);
     });
-    this.on('logicDeleteUser', async (req) => {
+
+    // PATCH (para borrado lógico) y DELETE (para borrado físico) de usuario
+    this.on('deleteusers', async (req) => {
       return svc.logicalDeleteUser(req);
     });
-    this.on('deleteUser', async (req) => {
+
+    this.on('removeuser', async (req) => {
       return svc.physicalDeleteUser(req);
     });
 
-    // 🔹 Roles
-    this.on('getAllRoles', async (req) => {
-      return svc.getAllRoles(req);
-    });
-    this.on('getRoleById', async (req) => {
-      return svc.getRoleById(req);
-    });
-    this.on('createRole', async (req) => {
-      return svc.createRole(req);
-    });
-    this.on('updateRole', async (req) => {
-      return svc.updateRole(req);
-    });
-    this.on('logicDeleteRole', async (req) => {
-      return svc.logicalDeleteRole(req);
-    });
-    this.on('deleteRole', async (req) => {
-      return svc.physicalDeleteRole(req);
-    });
-    this.on('getUsersByRole', async (req) => {
-      return svc.getUsersByRole(req);
+    // ─── ROLES ─────────────────────────────
+    // GET: Obtener roles o un rol específico (con usuarios asociados si se filtra)
+    this.on('roles', async (req) => {
+      return svc.roles(req);
     });
 
+    // POST: Crear rol
+    this.on('createrole', async (req) => {
+      return svc.createRole(req);
+    });
+
+    // PUT: Actualizar rol (se espera que roleid venga en params)
+    this.on('updaterole', async (req) => {
+      return svc.updateRole(req);
+    });
+
+    // PATCH (borrado lógico) y DELETE (eliminado físico) de rol
+    this.on('deleteroles', async (req) => {
+      if (req.method === 'DELETE') {
+        return svc.physicalDeleteRole(req);
+      } else {
+        return svc.logicalDeleteRole(req);
+      }
+    });
+
+    // ─── VISTAS ─────────────────────────────
+    this.on('createview', async (req) => {
+      // Se puede implementar la lógica real; por el momento se retorna un stub.
+      return { message: 'createview no implementado' };
+    });
+    this.on('updateview', async (req) => {
+      return { message: 'updateview no implementado' };
+    });
+    this.on('deleteview', async (req) => {
+      return { message: 'deleteview no implementado' };
+    });
+
+    // ─── PROCESOS ─────────────────────────────
+    this.on('createprocess', async (req) => {
+      return { message: 'createprocess no implementado' };
+    });
+    this.on('updateprocess', async (req) => {
+      return { message: 'updateprocess no implementado' };
+    });
+    // Se diferencia borrado lógico (PATCH) y eliminación física (DELETE)
+    this.on('deleteprocess', async (req) => {
+      if (req.method === 'DELETE') {
+        return { message: 'removeprocess no implementado' };
+      } else {
+        return { message: 'deleteprocess no implementado' };
+      }
+    });
 
     return await super.init();
   }
