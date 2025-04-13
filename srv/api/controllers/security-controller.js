@@ -51,11 +51,11 @@ class SecurityController extends cds.ApplicationService {
 
     // PATCH (borrado lógico) y DELETE (eliminado físico) de rol
     this.on('deleteroles', async (req) => {
-      if (req.method === 'DELETE') {
-        return svc.physicalDeleteRole(req);
-      } else {
-        return svc.logicalDeleteRole(req);
-      }
+      return svc.logicalDeleteRole(req);
+    });
+
+    this.on('removerole', async (req) => {
+      return svc.physicalDeleteRole(req);
     });
 
     // ─── VISTAS ─────────────────────────────

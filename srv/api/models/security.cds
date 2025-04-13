@@ -62,45 +62,55 @@ entity CatalogWithValues {
 }
 
 type RoleData : {
-  ROLEID    : String;
-  ROLEIDSAP : String;
+    ROLEID    : String;
+    ROLEIDSAP : String;
 };
 
 entity User {
-  USERID         : String;
-  PASSWORD       : String;
-  USERNAME       : String;
-  ALIAS          : String;
-  FIRSTNAME      : String;
-  LASTNAME       : String;
-  BIRTHDAYDATE   : Date;
-  COMPANYID      : Integer;
-  COMPANYNAME    : String;
-  COMPANYALIAS   : String;
-  CEDIID         : String;
-  EMPLOYEEID     : String;
-  EMAIL          : String;
-  PHONENUMBER    : String;
-  EXTENSION      : String;
-  DEPARTMENT     : String;
-  FUNCTION       : String;
-  STREET         : String;
-  POSTALCODE     : Integer;
-  CITY           : String;
-  REGION         : String;
-  STATE          : String;
-  COUNTRY        : String;
-  AVATAR         : String;
-  ROLES          : Array of RoleData;
-  DETAIL_ROW     : DetailRow;
+    USERID         : String;
+    PASSWORD       : String;
+    USERNAME       : String;
+    ALIAS          : String;
+    FIRSTNAME      : String;
+    LASTNAME       : String;
+    BIRTHDAYDATE   : Date;
+    COMPANYID      : Integer;
+    COMPANYNAME    : String;
+    COMPANYALIAS   : String;
+    CEDIID         : String;
+    EMPLOYEEID     : String;
+    EMAIL          : String;
+    PHONENUMBER    : String;
+    EXTENSION      : String;
+    DEPARTMENT     : String;
+    FUNCTION       : String;
+    STREET         : String;
+    POSTALCODE     : Integer;
+    CITY           : String;
+    REGION         : String;
+    STATE          : String;
+    COUNTRY        : String;
+    AVATAR         : String;
+    ROLES          : Array of RoleData;
+    DETAIL_ROW     : DetailRow;
 }
 
+// === NUEVOS TIPOS PARA ROLES ===
+
+// Cada entrada de privilegio agrupa un proceso y sus privilegios
+type PrivilegeData : {
+    PROCESSID    : String;
+    PRIVILEGEID  : Array of String;
+}
+
+// === ENTIDADES DE ROLES ===
 
 entity Role {
     ROLEID        : String;
     ROLENAME      : String;
     DESCRIPTION   : String;
-    PRIVILEGES    : String; // Se validará como JSON en el servicio
+    // Ahora un arreglo de estructuras en lugar de String
+    PRIVILEGES    : Array of PrivilegeData;
     DETAIL_ROW    : DetailRow;
 }
 

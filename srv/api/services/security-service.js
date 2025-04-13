@@ -15,7 +15,7 @@ async function connect() {
 }
 
 // ─── Funciones para Catálogos ───────────────────────────
-async function getAllCatalogsWithValues(req) {
+async function getAllCatalogsWithValues() {
   await connect();
   const labels = await ZtLabel.find({ 'DETAIL_ROW.ACTIVED': true }).lean();
   return Promise.all(labels.map(async lbl => {
@@ -36,7 +36,6 @@ async function getCatalogByLabel(req) {
 async function getCatalogByLabelAndValue(req) {
   await connect();
   const { labelid, valueid } = req.data;
-
   if (!labelid || !valueid) return null;
 
   const lbl = await ZtLabel.findOne({ LABELID: labelid }).lean();
@@ -51,8 +50,6 @@ async function getCatalogByLabelAndValue(req) {
   };
 }
 
-
-// Función compuesta para catálogos
 async function catalogs(req) {
   const { labelid, valueid } = req.data || {};
   if (labelid && valueid) {
@@ -60,7 +57,7 @@ async function catalogs(req) {
   } else if (labelid) {
     return getCatalogByLabel(req);
   } else {
-    return getAllCatalogsWithValues(req);
+    return getAllCatalogsWithValues();
   }
 }
 
@@ -73,61 +70,34 @@ async function getAllUsers() {
 async function getUserById(req) {
   await connect();
   const { userid } = req.data;
-  console.log(userid);
   if (!userid) return null;
   return ZtUser.findOne({ USERID: userid }).lean();
 }
 
 async function createUser(req) {
-  try {
-    await connect();
-    const usuarioPlano = JSON.parse(JSON.stringify(req.data.user));
-    const nuevoUsuario = await ZtUser.create(usuarioPlano);
-    return JSON.parse(JSON.stringify(nuevoUsuario));
-  } catch (error) {
-    throw error;
-  }
+  await connect();
+  const usuarioPlano = JSON.parse(JSON.stringify(req.data.user));
+  const nuevoUsuario = await ZtUser.create(usuarioPlano);
+  return JSON.parse(JSON.stringify(nuevoUsuario));
 }
-
 
 async function updateUser(req) {
   await connect();
-
-  // 1) Extrae userid de la query string cruda
   const userid = req._.req.query.userid;
-  console.log('updateUser.userid from query:', userid);
-
   if (!userid) {
     throw new Error('No se proporcionó userid en la query string');
   }
-
-  // 2) El payload completo (body) está en req.data
   const userPayload = req.data.user;
-  console.log('updateUser.user payload:', userPayload);
-
-  // 3) Actualizas el documento
-  await ZtUser.updateOne(
-    { USERID: userid },
-    userPayload
-  );
-
-  // 4) Devuelves el usuario actualizado
+  await ZtUser.updateOne({ USERID: userid }, userPayload);
   return ZtUser.findOne({ USERID: userid }).lean();
 }
 
-
 async function logicalDeleteUser(req) {
   await connect();
-
-  // 1) Extrae userid de la query string cruda
   const userid = req._.req.query.userid;
-  console.log('logicalDeleteUser.userid from query:', userid);
-
   if (!userid) {
     throw new Error('No se proporcionó userid en la query string');
   }
-
-  // 2) Realiza el borrado lógico
   await ZtUser.updateOne(
     { USERID: userid },
     {
@@ -135,38 +105,19 @@ async function logicalDeleteUser(req) {
       'DETAIL_ROW.DELETED': true
     }
   );
-
-  // 3) Opcional: devuelve el registro actualizado o un mensaje
-  const usuarioActualizado = await ZtUser.findOne({ USERID: userid }).lean();
-  return usuarioActualizado
-    ? usuarioActualizado
-    : 'Usuario no encontrado para borrado lógico';
+  return ZtUser.findOne({ USERID: userid }).lean() || 'Usuario no encontrado para borrado lógico';
 }
 
 async function physicalDeleteUser(req) {
   await connect();
-
-  // 1) Extrae userid de la query string cruda
   const userid = req._.req.query.userid;
-  console.log('physicalDeleteUser.userid from query:', userid);
-
   if (!userid) {
     throw new Error('No se proporcionó userid en la query string');
   }
-
-  // 2) Realiza el borrado físico
   const result = await ZtUser.deleteOne({ USERID: userid });
-
-  // 3) Devuelve un mensaje según el resultado
-  if (result.deletedCount === 1) {
-    return 'Borrado físicamente';
-  } else {
-    return 'Usuario no encontrado para borrado físico';
-  }
+  return result.deletedCount === 1 ? 'Borrado físicamente' : 'Usuario no encontrado para borrado físico';
 }
 
-
-// Función compuesta para usuarios: si se envía "userid" se obtiene un usuario, de lo contrario se retornan todos
 async function users(req) {
   const { userid } = req.data || {};
   if (userid && userid.trim() !== '') {
@@ -177,7 +128,7 @@ async function users(req) {
   }
 }
 
-// ─── Funciones para Roles ─────────────────────────────
+// ─── Funciones para Roles ────────────────────────────────
 async function getAllRoles() {
   await connect();
   return ZtRole.find({ 'DETAIL_ROW.ACTIVED': true }).lean();
@@ -194,7 +145,7 @@ async function getUsersByRole(req) {
   await connect();
   const { roleid } = req.data;
   if (!roleid) return [];
-  const users = await ZtUser.find({ 'ROLES.ROLEID': roleid }).lean();
+  const users = await ZtUser.find({ 'ROLES.ROLEID': roleid, 'DETAIL_ROW.ACTIVED': true }).lean();
   return users.map(u => ({
     USERID: u.USERID,
     USERNAME: u.USERNAME,
@@ -205,45 +156,62 @@ async function getUsersByRole(req) {
 
 async function createRole(req) {
   await connect();
-  // Aquí se podría validar la existencia de procesos y privilegios.
-  return ZtRole.create(req.data);
+  // Extraemos el objeto role de req.data
+  const rolePlano = JSON.parse(JSON.stringify(req.data.role));
+
+  // Aquí podrías validar procesos y privilegios antes de crear
+  const nuevoRol = await ZtRole.create(rolePlano);
+
+  return JSON.parse(JSON.stringify(nuevoRol));
 }
+
 
 async function updateRole(req) {
   await connect();
-  const { roleid } = req.params; // se espera que roleid se pase en params
-  await ZtRole.updateOne({ ROLEID: roleid }, req.data);
+  // roleid se pasa por query string para mantener consistencia con users
+  const roleid = req._.req.query.roleid;
+  if (!roleid) {
+    throw new Error('No se proporcionó roleid en la query string');
+  }
+  const rolePayload = req.data.role;
+  await ZtRole.updateOne({ ROLEID: roleid }, rolePayload);
   return ZtRole.findOne({ ROLEID: roleid }).lean();
 }
 
 async function logicalDeleteRole(req) {
   await connect();
-  const { roleid } = req.data;
-  if (!roleid) return 'No se proporcionó roleid';
-  await ZtRole.updateOne({ ROLEID: roleid }, {
-    'DETAIL_ROW.ACTIVED': false,
-    'DETAIL_ROW.DELETED': true
-  });
-  return 'Borrado lógicamente';
+  const roleid = req._.req.query.roleid;
+  if (!roleid) {
+    throw new Error('No se proporcionó roleid en la query string');
+  }
+  await ZtRole.updateOne(
+    { ROLEID: roleid },
+    {
+      'DETAIL_ROW.ACTIVED': false,
+      'DETAIL_ROW.DELETED': true
+    }
+  );
+  return ZtRole.findOne({ ROLEID: roleid }).lean() || 'Rol no encontrado para borrado lógico';
 }
 
 async function physicalDeleteRole(req) {
   await connect();
-  const { roleid } = req.data;
-  if (!roleid) return 'No se proporcionó roleid';
-  await ZtRole.deleteOne({ ROLEID: roleid });
-  return 'Borrado físicamente';
+  const roleid = req._.req.query.roleid;
+  if (!roleid) {
+    throw new Error('No se proporcionó roleid en la query string');
+  }
+  const result = await ZtRole.deleteOne({ ROLEID: roleid });
+  return result.deletedCount === 1 ? 'Borrado físicamente' : 'Rol no encontrado para borrado físico';
 }
 
-// Función compuesta para roles: si se envía "roleid" se retorna el rol junto con los usuarios asociados; de lo contrario, se retornan todos los roles
 async function roles(req) {
   const { roleid } = req.data || {};
   if (roleid && roleid.trim() !== '') {
+    // Para operaciones GET compuestas: leemos roleid de req.data
     const role = await getRoleById(req);
+    if (!role) return null;
     const usersArr = await getUsersByRole(req);
-    if (role) {
-      role.USERS = usersArr;
-    }
+    role.USERS = usersArr;
     return role;
   } else {
     return getAllRoles();
