@@ -28,6 +28,6 @@
     "build": "cds build --clean && npm run bat"
   },
   "requires": {
-    "impl": "srv/api/controllers/inv-inversions-controllers.js"
+    "impl": "srv/api/controllers/security-controller.js"
   }
 }
