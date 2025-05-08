@@ -60,6 +60,44 @@ async function catalogs(req) {
     return getAllCatalogsWithValues();
   }
 }
+async function updateCatalog(req) {
+    await connect();
+    const labelid = req._.req.query.labelid;
+    console.log('labelid', labelid);
+    if (!labelid) {
+      throw new Error('No se proporcionó labelid en la query string');
+    }
+    const catalogPayload = req.data.catalogs;
+    console.log('labelid medio  ', labelid);
+    await ZtLabel.updateOne({ LABELID: labelid }, catalogPayload);
+    return ZtLabel.findOne({ LABELID: labelid }).lean();
+  }
+ 
+  async function logicalDeleteCatalog(req) {
+    await connect();
+    const  labelid  = req._.req.query.labelid;
+    if (!labelid) {
+      throw new Error('No se proporcionó labelid en la query string');
+    }
+    await ZtLabel.updateOne(
+      { LABELID: labelid },
+      {
+        'DETAIL_ROW.ACTIVED': false,
+        'DETAIL_ROW.DELETED': true
+      }
+    );
+    return ZtLabel.findOne({ LABELID: labelid }).lean() || 'Usuario no encontrado para borrado lógico';
+  }
+
+  async function physicalDeleteCatalog(req) {
+    await connect();
+    const labelid = req._.req.query.labelid;
+    if (!labelid) {
+      throw new Error('No se proporcionó labelid en la query string');
+    }
+    const result = await ZtLabel.deleteOne({ LABELID: labelid });
+    return result.deletedCount === 1 ? 'Borrado físicamente' : 'Usuario no encontrado para borrado físico';
+  }
 
 // ─── Funciones para Usuarios ─────────────────────────────
 async function getAllUsers() {
@@ -224,6 +262,9 @@ module.exports = {
   getCatalogByLabel,
   getCatalogByLabelAndValue,
   catalogs,
+  logicalDeleteCatalog,
+  updateCatalog,
+  physicalDeleteCatalog,
   // Usuarios
   getAllUsers,
   getUserById,

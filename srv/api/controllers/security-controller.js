@@ -8,6 +8,19 @@ class SecurityController extends cds.ApplicationService {
       return svc.catalogs(req);
     });
 
+    this.on('deletecatalogs', async (req) => {
+      return svc.logicalDeleteCatalog(req);
+    });
+
+    
+    this.on('updatecatalogs', async (req) => {
+      return svc.updateCatalog(req);
+    });
+    
+    this.on('removecatalog', async (req) => {
+      return svc.physicalDeleteCatalog(req);
+    });
+
     // ─── USUARIOS ─────────────────────────────
     // GET: Obtener usuarios o un usuario específico (según query param "userid")
     this.on('users', async (req) => {

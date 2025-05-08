@@ -12,6 +12,17 @@ service SecurityRoute @(path:'/api/security') {
   @path: 'catalogs'
   function catalogs(labelid: String, valueid: String) returns array of CatalogWithValues;
 
+  @Core.Description: 'Borrado lógico de catalogo'
+  @path: 'deletecatalogs'
+  action deletecatalogs(labelid: String) returns String;
+  
+  @Core .Description: 'Actualizacion de catalogo'
+  @path: 'updatecatalogs'
+  action updatecatalogs(labelid: String, catalogs : Catalog) returns Catalog; 
+
+  @Core.Description: 'Eliminado físico de catalogo'
+  @path: 'removecatalog'
+  action removecatalog(labelid: String) returns String;
   // ─── USUARIOS ─────────────────────────────────────────
   entity User as projection on s.User;
   @Core.Description: 'Obtener usuarios o usuario por ID (en el body se envía userid)'
