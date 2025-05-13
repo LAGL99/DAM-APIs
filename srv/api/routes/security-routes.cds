@@ -34,7 +34,7 @@ service SecurityRoute @(path:'/api/security') {
   action createuser(user: User) returns User;
   
   @Core.Description: 'Actualizar usuario'
-  @path: 'users'
+  @path: 'updateuser'
   action updateuser(userid: String, user: User) returns User;
   
   @Core.Description: 'Borrado lógico de usuario'
