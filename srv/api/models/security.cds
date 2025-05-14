@@ -73,7 +73,7 @@ entity User {
     ALIAS          : String;
     FIRSTNAME      : String;
     LASTNAME       : String;
-    BIRTHDAYDATE   : Date;
+    BIRTHDAYDATE   : String;
     COMPANYID      : Integer;
     COMPANYNAME    : String;
     COMPANYALIAS   : String;
