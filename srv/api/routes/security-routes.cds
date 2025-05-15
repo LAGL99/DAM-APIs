@@ -3,26 +3,49 @@ using { security as s } from '../models/security';
 @impl: 'srv/api/controllers/security-controller.js'
 service SecurityRoute @(path:'/api/security') {
 
-  // ─── CATÁLOGOS ─────────────────────────────────────────
-  entity Catalog as projection on s.Catalog;
-  entity Value as projection on s.Value;
-  entity CatalogWithValues as projection on s.CatalogWithValues;
+entity Value               as projection on s.ZtValue;
+entity CatalogWithValues   as projection on s.CatalogWithValues;
+entity Catalog as projection on s.ZtLabel {
+  COMPANYID,
+  CEDIID,
+  LABELID,
+  LABEL,
+  INDEX,
+  COLLECTION,
+  SECTION,
+  SEQUENCE,
+  IMAGE,
+  DESCRIPTION,
+  DETAIL_ROW   // <— ahora sí existe
+};
+// -------------------------------------------------
+//  CATÁLOGOS
+// -------------------------------------------------
 
-  @Core.Description: 'Obtener catálogos. Filtra por labelid y valueid si se proporcionan (en el body de la petición)'
-  @path: 'catalogs'
-  function catalogs(labelid: String, valueid: String) returns array of CatalogWithValues;
+@Core.Description: 'Obtener catálogos. Filtra por labelid y valueid si se proporcionan'
+@path: 'catalogs'
+function catalogs(labelid: String, valueid: String) 
+  returns array of CatalogWithValues;
 
-  @Core.Description: 'Borrado lógico de catalogo'
-  @path: 'deletecatalogs'
-  action deletecatalogs(labelid: String) returns String;
-  
-  @Core .Description: 'Actualizacion de catalogo'
-  @path: 'updatecatalogs'
-  action updatecatalogs(labelid: String, catalogs : Catalog) returns Catalog; 
+@Core.Description: 'Crear un nuevo catálogo con sus valores'
+@path: 'createCatalog'
+action createCatalog(catalog: CatalogWithValues) 
+  returns CatalogWithValues;
 
-  @Core.Description: 'Eliminado físico de catalogo'
-  @path: 'removecatalog'
-  action removecatalog(labelid: String) returns String;
+@Core.Description: 'Actualización de catálogo y sus valores'
+@path: 'updateCatalog'
+action updateCatalog(labelid: String, catalog: CatalogWithValues) 
+  returns CatalogWithValues;
+
+@Core.Description: 'Borrado lógico de catálogo y sus valores'
+@path: 'logicalDeleteCatalog'
+action logicalDeleteCatalog(labelid: String) 
+  returns CatalogWithValues;
+
+@Core.Description: 'Borrado físico (marcado) de catálogo y sus valores'
+@path: 'physicalDeleteCatalog'
+action physicalDeleteCatalog(labelid: String) 
+  returns String;
   // ─── USUARIOS ─────────────────────────────────────────
   entity User as projection on s.User;
   @Core.Description: 'Obtener usuarios o usuario por ID (en el body se envía userid)'

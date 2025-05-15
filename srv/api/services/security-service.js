@@ -60,6 +60,111 @@ async function catalogs(req) {
     return getAllCatalogsWithValues();
   }
 }
+
+// ─── Nuevo: Crear un catálogo ───────────────────────────
+async function createCatalog(req) {
+  await connect();
+  const payload = req.data.catalog;
+  if (!payload || !payload.LABELID) {
+    throw new Error('Datos de catálogo inválidos o falta LABELID');
+  }
+
+  // Crear etiqueta
+  const newLabel = new ZtLabel({
+    COMPANYID: payload.COMPANYID,
+    CEDIID: payload.CEDIID,
+    LABELID: payload.LABELID,
+    LABEL: payload.LABEL,
+    INDEX: payload.INDEX,
+    COLLECTION: payload.COLLECTION,
+    SECTION: payload.SECTION,
+    SEQUENCE: payload.SEQUENCE,
+    IMAGE: payload.IMAGE,
+    DESCRIPTION: payload.DESCRIPTION,
+    DETAIL_ROW: {
+      ACTIVED: true,
+      DELETED: false,
+      DETAIL_ROW_REG: [payload.DETAIL_ROW_REG || {}]
+    }
+  });
+  await newLabel.save();
+
+//Crear catálogo
+  if (Array.isArray(payload.VALUES)) {
+    const valueDocs = payload.VALUES.map(v => ({
+      COMPANYID: v.COMPANYID,
+      CEDIID: v.CEDIID,
+      LABELID: payload.LABELID,
+      VALUEPAID: v.VALUEPAID,
+      VALUEID: v.VALUEID,
+      VALUE: v.VALUE,
+      ALIAS: v.ALIAS,
+      SEQUENCE: v.SEQUENCE,
+      IMAGE: v.IMAGE,
+      VALUESAPID: v.VALUESAPID,
+      DESCRIPTION: v.DESCRIPTION,
+      ROUTE: v.ROUTE,
+      DETAIL_ROW: {
+        ACTIVED: true,
+        DELETED: false,
+        DETAIL_ROW_REG: [v.DETAIL_ROW_REG || {}]
+      }
+    }));
+    await ZtValue.insertMany(valueDocs);
+  }
+
+  return getCatalogByLabel({ data: { labelid: payload.LABELID } });
+}
+
+// Actualizar un catálogo
+async function updateCatalog(req) {
+  await connect();
+  const labelid = req._.req.query.labelid;
+  if (!labelid) {
+    throw new Error('No se proporcionó labelid en la query string');
+  }
+
+  const catalogPayload = req.data.catalog;
+  if (!catalogPayload) {
+    throw new Error('Falta el payload de catálogo en req.data.catalog');
+  }
+
+  // Actualizar datos de la etiqueta
+  await ZtLabel.updateOne(
+    { LABELID: labelid },
+    { $set: {
+      LABEL: catalogPayload.LABEL,
+      INDEX: catalogPayload.INDEX,
+      COLLECTION: catalogPayload.COLLECTION,
+      SECTION: catalogPayload.SECTION,
+      SEQUENCE: catalogPayload.SEQUENCE,
+      IMAGE: catalogPayload.IMAGE,
+      DESCRIPTION: catalogPayload.DESCRIPTION,
+      'DETAIL_ROW.ACTIVED': catalogPayload.DETAIL_ROW.ACTIVED,
+      'DETAIL_ROW.DELETED': catalogPayload.DETAIL_ROW.DELETED
+    }}
+  );
+
+  // Reemplazar todos sus valores: eliminar los antiguos y crear los nuevos
+  await ZtValue.deleteMany({ LABELID: labelid });
+  if (Array.isArray(catalogPayload.VALUES)) {
+    const newValues = catalogPayload.VALUES.map(v => ({
+      ...v,
+      LABELID: labelid,
+      DETAIL_ROW: {
+        ACTIVED: v.DETAIL_ROW.ACTIVED,
+        DELETED: v.DETAIL_ROW.DELETED,
+        DETAIL_ROW_REG: v.DETAIL_ROW.DETAIL_ROW_REG || []
+      }
+    }));
+    await ZtValue.insertMany(newValues);
+  }
+
+  // Retornar catálogo actualizado
+  return getCatalogByLabel({ data: { labelid } });
+}
+
+
 async function updateCatalog(req) {
     await connect();
     const labelid = req._.req.query.labelid;
@@ -73,31 +178,73 @@ async function updateCatalog(req) {
     return ZtLabel.findOne({ LABELID: labelid }).lean();
   }
  
-  async function logicalDeleteCatalog(req) {
-    await connect();
-    const  labelid  = req._.req.query.labelid;
-    if (!labelid) {
-      throw new Error('No se proporcionó labelid en la query string');
-    }
-    await ZtLabel.updateOne(
-      { LABELID: labelid },
-      {
-        'DETAIL_ROW.ACTIVED': false,
-        'DETAIL_ROW.DELETED': true
-      }
-    );
-    return ZtLabel.findOne({ LABELID: labelid }).lean() || 'Usuario no encontrado para borrado lógico';
+// Borrado lógico de catálogo y sus valores
+async function logicalDeleteCatalog(req) {
+  await connect();
+  const labelid = req._.req.query.labelid;
+  if (!labelid) {
+    throw new Error('No se proporcionó labelid en la query string');
   }
 
-  async function physicalDeleteCatalog(req) {
-    await connect();
-    const labelid = req._.req.query.labelid;
-    if (!labelid) {
-      throw new Error('No se proporcionó labelid en la query string');
-    }
-    const result = await ZtLabel.deleteOne({ LABELID: labelid });
-    return result.deletedCount === 1 ? 'Borrado físicamente' : 'Usuario no encontrado para borrado físico';
+  // Actualizar etiqueta
+  const labelResult = await ZtLabel.updateOne(
+    { LABELID: labelid },
+    { $set: {
+      'DETAIL_ROW.ACTIVED': false,
+      'DETAIL_ROW.DELETED': false
+    }}
+  );
+
+  // Actualizar valores asociados
+  const valueResult = await ZtValue.updateMany(
+    { LABELID: labelid },
+    { $set: {
+      'DETAIL_ROW.ACTIVED': false,
+      'DETAIL_ROW.DELETED': false
+    }}
+  );
+
+  if (labelResult.nModified === 0 && valueResult.nModified === 0) {
+    return 'Catálogo no encontrado para borrado lógico';
   }
+
+  // Retornar catálogo con valores ya marcados
+  return getCatalogByLabel({ data: { labelid } });
+}
+
+// Borrado físico (marcado) de catálogo y sus valores
+async function physicalDeleteCatalog(req) {
+  await connect();
+  const labelid = req._.req.query.labelid;
+  if (!labelid) {
+    throw new Error('No se proporcionó labelid en la query string');
+  }
+
+  // Actualizar etiqueta
+  const labelResult = await ZtLabel.updateOne(
+    { LABELID: labelid },
+    { $set: {
+      'DETAIL_ROW.ACTIVED': false,
+      'DETAIL_ROW.DELETED': true
+    }}
+  );
+
+  // Actualizar valores asociados
+  const valueResult = await ZtValue.updateMany(
+    { LABELID: labelid },
+    { $set: {
+      'DETAIL_ROW.ACTIVED': false,
+      'DETAIL_ROW.DELETED': true
+    }}
+  );
+
+  if (labelResult.nModified === 0 && valueResult.nModified === 0) {
+    return 'Catálogo no encontrado para borrado físico';
+  }
+
+  return 'Borrado físicamente del catálogo y sus valores';
+}
+
 
 // ─── Funciones para Usuarios ─────────────────────────────
 async function getAllUsers() {
@@ -262,6 +409,7 @@ module.exports = {
   getCatalogByLabel,
   getCatalogByLabelAndValue,
   catalogs,
+  createCatalog,
   logicalDeleteCatalog,
   updateCatalog,
   physicalDeleteCatalog,
