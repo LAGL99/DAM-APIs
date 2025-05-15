@@ -42,7 +42,7 @@ service SecurityRoute @(path:'/api/security') {
   action deleteusers(userid: String) returns String;
   
   @Core.Description: 'Eliminado físico de usuario'
-  @path: 'removeusers'
+  @path: 'removeuser'
   action removeuser(userid: String) returns String;
 
   // ─── ROLES ─────────────────────────────────────────
@@ -52,11 +52,11 @@ service SecurityRoute @(path:'/api/security') {
   function roles(roleid: String) returns array of Role;
   
   @Core.Description: 'Crear rol'
-  @path: 'roles'
+  @path: 'createrole'
   action createrole(role: Role) returns Role;
   
   @Core.Description: 'Actualizar rol'
-  @path: 'roles'
+  @path: 'updaterole'
   action updaterole(roleid: String, role: Role) returns Role;
   
   @Core.Description: 'Borrado lógico de rol'
@@ -64,17 +64,17 @@ service SecurityRoute @(path:'/api/security') {
   action deleteroles(roleid: String) returns String;
   
   @Core.Description: 'Eliminado físico de rol'
-  @path: 'deleteroles'
+  @path: 'removerole'
   action removerole(roleid: String) returns String;
 
   // ─── VISTAS ─────────────────────────────────────────
   entity View  as projection on s.View;
   @Core.Description: 'Crear vista'
-  @path: 'view'
+  @path: 'createview'
   action createview(view: View) returns View;
   
   @Core.Description: 'Actualizar vista'
-  @path: 'view'
+  @path: 'updateview'
   action updateview(valueid: String, view: View) returns View;
   
   @Core.Description: 'Borrado lógico de vista'
@@ -88,18 +88,18 @@ service SecurityRoute @(path:'/api/security') {
   // ─── PROCESOS ─────────────────────────────────────────
   entity Process as projection on s.Process;
   @Core.Description: 'Crear proceso'
-  @path: 'processes'
+  @path: 'createprocess'
   action createprocess(proc: Process) returns Process;
   
   @Core.Description: 'Actualizar proceso'
-  @path: 'values/processes'
+  @path: 'updateprocess'
   action updateprocess(valueid: String, proc: Process) returns Process;
   
   @Core.Description: 'Borrado lógico de proceso'
-  @path: 'deleteprocesses'
+  @path: 'deleteprocess'
   action deleteprocess(valueid: String) returns String;
   
   @Core.Description: 'Eliminado físico de proceso'
-  @path: 'deleteprocesses'
+  @path: 'removeprocess'
   action removeprocess(valueid: String) returns String;
 }
