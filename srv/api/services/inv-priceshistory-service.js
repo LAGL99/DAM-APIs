@@ -115,26 +115,33 @@ async function DeleteOnePricesHistory(req){
 
 
 async function simulateTurtleSoup(symbol, startDate, endDate, amount, userId, specs) {
-
-  // 1. Parse specs ("LOOKBACK:20&RR:1.5" → { lookback:20, rr:1.5 })
+  // 1. Parseo de specs
   const specMap = specs
     .split('&')
     .map(pair => pair.split(':'))
-    .reduce((acc, [k, v]) => {
-      acc[k.trim().toLowerCase()] = parseFloat(v);
+    .reduce((acc, [rawKey, rawVal]) => {
+      const key = rawKey.trim().toLowerCase();
+      const val = rawVal.trim();
+      // Detectar ON/OFF → booleano; en otro caso, number
+      if (/^on$/i.test(val))          acc[key] = true;
+      else if (/^off$/i.test(val))    acc[key] = false;
+      else                            acc[key] = parseFloat(val);
       return acc;
     }, {});
+
   const lookback = specMap['lookback'] ?? 20;
   const rr       = specMap['rr']       ?? 1.5;
+  const useFvg   = specMap['fvg']      ?? false;
+  const useOb    = specMap['ob']       ?? false;
 
-  // 2. Fetch AlphaVantage
+  // 2. Fetch de datos con AlphaVantage
   const apiKey = process.env.ALPHA_VANTAGE_KEY || 'demo';
   const apiUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=full&apikey=${apiKey}`;
-  const resp  = await axios.get(apiUrl);
-  const rawTs = resp.data['Time Series (Daily)'];
+  const resp   = await axios.get(apiUrl);
+  const rawTs  = resp.data['Time Series (Daily)'];
   if (!rawTs) throw new Error('Respuesta inválida de AlphaVantage');
 
-  // 3. Mapear y filtrar
+  // 3. Mapear y filtrar por rango de fechas
   const prices = Object.entries(rawTs)
     .map(([date, ohlc]) => ({
       date,
@@ -145,47 +152,65 @@ async function simulateTurtleSoup(symbol, startDate, endDate, amount, userId, sp
     }))
     .filter(p => p.date >= startDate && p.date <= endDate)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
-  if (prices.length < lookback + 1) throw new Error(`Se necesitan al menos ${lookback + 1} velas`);
 
-  // 4. Auxiliares Donchian
+  if (prices.length < lookback + 1) {
+    throw new Error(`Se necesitan al menos ${lookback + 1} velas para lookback=${lookback}`);
+  }
+
+  // 4. Funciones auxiliares Donchian
   const donchianHigh = i => Math.max(...prices.slice(i - lookback, i).map(p => p.high));
   const donchianLow  = i => Math.min(...prices.slice(i - lookback, i).map(p => p.low));
 
-  // 5. Estado de simulación
+  // 5. Estado de la simulación
   let position = null;
-  let signals  = [];
-  let trades   = [];
-  let cash     = amount;
-  let shares   = 0;
+  const signals  = [];
+  const trades   = [];
+  let cash       = amount;
+  let shares     = 0;
 
-  // 6. Loop de barras
+  // 6. Loop de velas
   for (let i = lookback; i < prices.length; i++) {
     const bar  = prices[i];
     const prev = prices[i - 1];
     const H    = donchianHigh(i);
     const L    = donchianLow(i);
 
-    // Setups Turtle Soup
+    // 6.1. Turtle Soup Setups
     const tbsLong  = bar.close < L && bar.close > bar.open && prev.open < prev.close;
     const twsLong  = bar.low   < L && bar.close > L;
     const tbsShort = bar.close > H && bar.close < bar.open && prev.open > prev.close;
     const twsShort = bar.high  > H && bar.close < H;
 
-    const longEntry  = tbsLong  || twsLong;
-    const shortEntry = tbsShort || twsShort;
+    // 6.2. Lógica de Order Blocks
+    const bullOB = bar.close > bar.open && bar.close > prev.high && prev.open > prev.close;
+    const bearOB = bar.close < bar.open && bar.close < prev.low  && prev.open < prev.close;
 
+    // 6.3. Lógica de Fair Value Gap (mira dos velas atrás)
+    const twoBack = prices[i - 2];
+    const fvgUp   = twoBack && (bar.low  >  twoBack.high);
+    const fvgDn   = twoBack && (bar.high <  twoBack.low);
+
+    // 6.4. Confluencias
+    const longConfluence  = (!useOb || bullOB) && (!useFvg || fvgUp);
+    const shortConfluence = (!useOb || bearOB) && (!useFvg || fvgDn);
+
+    // 6.5. Señales finales con filtros
+    const longEntry  = (tbsLong || twsLong) && longConfluence;
+    const shortEntry = (tbsShort || twsShort) && shortConfluence;
+
+    // 6.6. Niveles SL/TP
     const longSL   = bar.low;
     const longTP   = bar.close + (bar.close - L) * rr;
     const shortSL  = bar.high;
     const shortTP  = bar.close - (H - bar.close) * rr;
 
-    // Abrir posición
+    // 6.7. Apertura de posición
     if (!position) {
       if (longEntry) {
         shares   = cash / bar.close;
         cash     = 0;
         position = { type:'long', entryPrice:bar.close, SL:longSL, TP:longTP, entryDate:bar.date };
-        signals.push({ date:bar.date, type:'buy', price:bar.close, reasoning:`Entry Long @${bar.close}` });
+        signals.push({ date:bar.date, type:'buy',  price:bar.close, reasoning:`Entry Long @${bar.close}` });
       } else if (shortEntry) {
         shares   = cash / bar.close;
         cash     = 0;
@@ -193,90 +218,127 @@ async function simulateTurtleSoup(symbol, startDate, endDate, amount, userId, sp
         signals.push({ date:bar.date, type:'sell', price:bar.close, reasoning:`Entry Short @${bar.close}` });
       }
     }
-    // Cierre SL/TP
+    // 6.8. Gestión de SL / TP
     else {
       if (position.type === 'long') {
-        // Stop Loss Long
+        // Stop Loss
         if (bar.low <= position.SL) {
-          const { entryDate, entryPrice } = position;
           const exitPrice = position.SL;
           cash = shares * exitPrice;
-          trades.push({ entryDate, exitDate:bar.date, type:'long', entryPrice, exitPrice, result:cash - amount });
+          trades.push({
+            entryDate:  position.entryDate,
+            exitDate:   bar.date,
+            type:       'long',
+            entryPrice: position.entryPrice,
+            exitPrice,
+            result:     cash - amount
+          });
           signals.push({ date:bar.date, type:'sell', price:exitPrice, reasoning:'Stop Loss Long' });
-          position = null;
-          shares   = 0;
+          position = null; shares = 0;
         }
-        // Take Profit Long
+        // Take Profit
         else if (bar.high >= position.TP) {
-          const { entryDate, entryPrice } = position;
           const exitPrice = position.TP;
           cash = shares * exitPrice;
-          trades.push({ entryDate, exitDate:bar.date, type:'long', entryPrice, exitPrice, result:cash - amount });
+          trades.push({
+            entryDate:  position.entryDate,
+            exitDate:   bar.date,
+            type:       'long',
+            entryPrice: position.entryPrice,
+            exitPrice,
+            result:     cash - amount
+          });
           signals.push({ date:bar.date, type:'sell', price:exitPrice, reasoning:'Take Profit Long' });
-          position = null;
-          shares   = 0;
+          position = null; shares = 0;
         }
       } else {
         // Stop Loss Short
         if (bar.high >= position.SL) {
-          const { entryDate, entryPrice } = position;
           const exitPrice = position.SL;
-          cash = shares * (2 * entryPrice - exitPrice);
-          trades.push({ entryDate, exitDate:bar.date, type:'short', entryPrice, exitPrice, result:cash - amount });
-          signals.push({ date:bar.date, type:'buy', price:exitPrice, reasoning:'Stop Loss Short' });
-          position = null;
-          shares   = 0;
+          cash = shares * (2 * position.entryPrice - exitPrice);
+          trades.push({
+            entryDate:  position.entryDate,
+            exitDate:   bar.date,
+            type:       'short',
+            entryPrice: position.entryPrice,
+            exitPrice,
+            result:     cash - amount
+          });
+          signals.push({ date:bar.date, type:'buy',  price:exitPrice, reasoning:'Stop Loss Short' });
+          position = null; shares = 0;
         }
         // Take Profit Short
         else if (bar.low <= position.TP) {
-          const { entryDate, entryPrice } = position;
           const exitPrice = position.TP;
-          cash = shares * (2 * entryPrice - exitPrice);
-          trades.push({ entryDate, exitDate:bar.date, type:'short', entryPrice, exitPrice, result:cash - amount });
-          signals.push({ date:bar.date, type:'buy', price:exitPrice, reasoning:'Take Profit Short' });
-          position = null;
-          shares   = 0;
+          cash = shares * (2 * position.entryPrice - exitPrice);
+          trades.push({
+            entryDate:  position.entryDate,
+            exitDate:   bar.date,
+            type:       'short',
+            entryPrice: position.entryPrice,
+            exitPrice,
+            result:     cash - amount
+          });
+          signals.push({ date:bar.date, type:'buy',  price:exitPrice, reasoning:'Take Profit Short' });
+          position = null; shares = 0;
         }
       }
     }
   }
 
-  // 7. Cierre final de posición abierta
+  // 7. Cierre de posición abierta al final
   if (position) {
-    const last = prices[prices.length -1];
-    const { entryDate, entryPrice, type } = position;
-    const exitPrice = last.close;
-    cash = type === 'long'
-      ? shares * exitPrice
-      : shares * (2 * entryPrice - exitPrice);
-    trades.push({ entryDate, exitDate:last.date, type, entryPrice, exitPrice, result:cash - amount });
-    position = null;
-    shares   = 0;
+    const last = prices[prices.length - 1];
+    const exitPrice = position.type === 'long'
+      ? last.close
+      : (2 * position.entryPrice - last.close);
+    cash = position.type === 'long'
+      ? shares * last.close
+      : shares * exitPrice;
+    trades.push({
+      entryDate:  position.entryDate,
+      exitDate:   last.date,
+      type:       position.type,
+      entryPrice: position.entryPrice,
+      exitPrice,
+      result:     cash - amount
+    });
+    position = null; shares = 0;
   }
 
   // 8. Resultados finales
-  const totalReturn      = cash;
+  const totalReturn      = parseFloat(cash.toFixed(2));
   const percentageReturn = parseFloat(((cash / amount) - 1).toFixed(4));
 
-  // 9. Construir y guardar
+  // 9. Guardar simulación en MongoDB
   const simObj = {
-    idSimulation:     `TBS_${Date.now()}_${uuidv4()}`,
-    idUser:           userId,
-    idStrategy:       'TBS',
-    simulationName:   'Turtle Soup',
+    idSimulation:   `TBS_${Date.now()}_${uuidv4()}`,
+    idUser:         userId,
+    idStrategy:     'TBS',
+    simulationName: 'Turtle Soup',
     symbol, startDate, endDate, amount, specs,
-    result:           parseFloat(totalReturn.toFixed(2)),
+    result:         totalReturn,
     percentageReturn,
     signals,
+    trades,
     DETAIL_ROW: [{
-      ACTIVED:true, DELETED:false,
-      DETAIL_ROW_REG:[{ CURRENT:true, REGDATE:new Date(), REGTIME:new Date(), REGUSER:userId }]
+      ACTIVED:       true,
+      DELETED:       false,
+      DETAIL_ROW_REG:[{
+        CURRENT:   true,
+        REGDATE:   new Date(),
+        REGTIME:   new Date(),
+        REGUSER:   userId
+      }]
     }]
   };
 
   await mongoose.connection.collection('SIMULATION').insertOne(simObj);
 
-  return { message:'Simulación TurtleSoup creada.', simulation:simObj };
+  return {
+    message:    'Simulación TurtleSoup creada.',
+    simulation: simObj
+  };
 }
 
 
