@@ -1,6 +1,6 @@
 
 const ztpriceshistory = require('../models/mongodb/ztpriceshistory-model')
-
+const axios = require('axios')
 
 
 async function GetAllPricesHistory(req){
@@ -108,4 +108,26 @@ async function DeleteOnePricesHistory(req){
     } finally {}
 
 }
-module.exports = {GetAllPricesHistory,AddOnePricesHistory,UpdateOnePricesHistory,DeleteOnePricesHistory}
+
+async function GetCompanies(req) {
+  try {
+    // URL ejemplo para buscar símbolos, este endpoint puede variar según doc Alpha Vantage
+    const url = `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=technology&apikey=${API_KEY}`;
+    const response = await axios.get(url);
+    
+    // Procesa response.data para devolver sólo la info necesaria
+    // Ejemplo: response.data.bestMatches
+    const companies = response.data.bestMatches.map(c => ({
+      symbol: c['1. symbol'],
+      name: c['2. name'],
+      exchange: c['4. region'],
+      assetType: c['3. type']
+    }));
+
+    return companies;
+  } catch (error) {
+    return { error: 'Error al obtener empresas: ' + error.message };
+  }
+}
+
+module.exports = {GetAllPricesHistory,AddOnePricesHistory,UpdateOnePricesHistory,DeleteOnePricesHistory, GetCompanies}
