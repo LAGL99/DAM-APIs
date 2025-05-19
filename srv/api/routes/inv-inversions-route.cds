@@ -14,12 +14,6 @@ service InversionsRoute @(path:'/api/inv'){
     entity priceshistory as projection on myinv.priceshistory;
     entity strategies as projection on myinv.strategies;
 
-    //5.- definir la ruta d ela API GEt ALL price history
-    //definir la endpont 
-    //localhost:333/api/inv/pricehistory/getall
-
-
-    // no olvidar que el nombre de la funcion debe ser el mismo que el del path 
 
     @Core.Description: 'get-all-prices-history'
     @path :'getall'
@@ -42,16 +36,10 @@ service InversionsRoute @(path:'/api/inv'){
     function deleteone(prices : priceshistory)
     returns array of priceshistory;
 
-    //localhost:333/api/inv/pricehistory/getone
-
-    //localhost:333/api/inv/pricehistory/deleteone
-
-    //localhost:333/api/inv/pricehistory/
-
-    //localhost:333/api/inv/pricehistory/getall
-
-    //localhost:333/api/inv/pricehistory/getall
-
+    @Core.Description: 'Turtle-strategy'
+    @path :'turtle-soup'
+    function turtle(prices : priceshistory)
+    returns array of priceshistory;
 };
 
 
