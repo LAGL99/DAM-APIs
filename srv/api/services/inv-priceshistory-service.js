@@ -337,7 +337,7 @@ async function simulateTurtleSoup(symbol, startDate, endDate, amount, userId, sp
 
   return {
     message:    'Simulación TurtleSoup creada.',
-    simulation: simObj
+    value: simObj
   };
 }
 
