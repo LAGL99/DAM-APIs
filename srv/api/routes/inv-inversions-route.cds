@@ -7,10 +7,12 @@ using {inv as myinv} from '../models/inv-inversions';
 @impl: 'srv/api/controllers/inv-inversions-controller.js'
 
 //3.-creacion de la estructura base 
-//definicion del servicio
+
+
 service InversionsRoute @(path:'/api/inv'){
 
-    //4.-instanciar la entidad de price history
+
+    entity Simulation as projection on myinv.Simulation;
     entity priceshistory as projection on myinv.priceshistory;
     entity strategies as projection on myinv.strategies;
 
@@ -37,9 +39,15 @@ service InversionsRoute @(path:'/api/inv'){
     returns array of priceshistory;
 
     @Core.Description: 'Turtle-strategy'
-    @path :'turtle-soup'
-    function turtle(prices : priceshistory)
-    returns array of priceshistory;
+    @path :'turtlesoup'
+    action turtlesoup(
+        symbol     : String,
+        startDate  : DateTime,
+        endDate    : DateTime,
+        amount     : Decimal(18,8),
+        userId     : String,
+        specs      : String
+    ) returns Simulation;
 };
 
 

@@ -3,9 +3,8 @@ const cds = require ('@sap/cds');
 
 
 //2.-importar el servicio 
-// aun no esta creado el servicio 
-const {GetAllPricesHistory,AddOnePricesHistory,UpdateOnePricesHistory,DeleteOnePricesHistory,simulateTurtleSoup} = require('../services/inv-priceshistory-service')
-//cosnt (GetAllPricesHistory) = requires(../services/inv-inversions-sservice)
+const {GetAllPricesHistory,AddOnePricesHistory,UpdateOnePricesHistory,DeleteOnePricesHistory,simulateTurtleSoup} = require('../services/inv-priceshistory-service');
+const inv = require ('../services/inv-priceshistory-service');
 
 //3.- estructura princiapl  de la clas de contorller 
 
@@ -40,8 +39,19 @@ class inversionsClass extends cds.ApplicationService{
             //requesamso ala aruta 
         });
 
-        this.on("turtle-soup", async (req) => {
-            return simulateTurtleSoup(req);
+        this.on("turtlesoup", async (req) => {
+            const {
+                symbol, startDate, endDate,
+                amount, userId, specs,
+                simulationName
+            } = req.data;
+
+            // Llama tu servicio con los argumentos adecuados
+            return inv.simulateTurtleSoup(
+                symbol, startDate, endDate,
+                amount, userId, specs,
+                simulationName
+            );
         });
         return await super.init();
     };
