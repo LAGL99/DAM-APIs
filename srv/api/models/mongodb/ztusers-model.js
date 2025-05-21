@@ -7,7 +7,7 @@ const ZtUserSchema = new Schema({
   ALIAS:        { type: String },
   FIRSTNAME:    { type: String },
   LASTNAME:     { type: String },
-  BIRTHDAYDATE: { type: Date },
+  BIRTHDAYDATE: { type: String },
   COMPANYID:    { type: Number },
   COMPANYNAME:  { type: String },
   COMPANYALIAS: { type: String },

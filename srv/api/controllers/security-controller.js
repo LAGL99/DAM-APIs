@@ -26,6 +26,10 @@ class SecurityController extends cds.ApplicationService {
     this.on('users', async (req) => {
       return svc.users(req);
     });
+    
+    this.on('usersAll', async (req) => {
+      return svc.getAllUsersDesactive(req);
+    });
 
     // POST: Crear usuario
     this.on('createuser', async (req) => {
@@ -40,6 +44,10 @@ class SecurityController extends cds.ApplicationService {
     // PATCH (para borrado lógico) y DELETE (para borrado físico) de usuario
     this.on('deleteusers', async (req) => {
       return svc.logicalDeleteUser(req);
+    });
+
+    this.on('activateusers', async (req) => {
+      return svc.logicalActivateUser(req);
     });
 
     this.on('removeuser', async (req) => {

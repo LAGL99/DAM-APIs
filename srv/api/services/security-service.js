@@ -100,6 +100,10 @@ async function updateCatalog(req) {
   }
 
 // ─── Funciones para Usuarios ─────────────────────────────
+async function getAllUsersDesactive() {
+  await connect();
+  return ZtUser.find().lean();
+}
 async function getAllUsers() {
   await connect();
   return ZtUser.find({ 'DETAIL_ROW.ACTIVED': true }).lean();
@@ -144,6 +148,22 @@ async function logicalDeleteUser(req) {
     }
   );
   return ZtUser.findOne({ USERID: userid }).lean() || 'Usuario no encontrado para borrado lógico';
+}
+
+async function logicalActivateUser(req) {
+  await connect();
+  const userid = req._.req.query.userid;
+  if (!userid) {
+    throw new Error('No se proporcionó userid en la query string');
+  }
+  await ZtUser.updateOne(
+    { USERID: userid },
+    {
+      'DETAIL_ROW.ACTIVED': true,
+      'DETAIL_ROW.DELETED': false
+    }
+  );
+  return ZtUser.findOne({ USERID: userid }).lean() || 'Usuario no encontrado para activado lógico';
 }
 
 async function physicalDeleteUser(req) {
@@ -232,6 +252,22 @@ async function logicalDeleteRole(req) {
   return ZtRole.findOne({ ROLEID: roleid }).lean() || 'Rol no encontrado para borrado lógico';
 }
 
+async function logicalActivateRole(req) {
+  await connect();
+  const roleid = req._.req.query.roleid;
+  if (!roleid) {
+    throw new Error('No se proporcionó roleid en la query string');
+  }
+  await ZtRole.updateOne(
+    { ROLEID: roleid },
+    {
+      'DETAIL_ROW.ACTIVED': true,
+      'DETAIL_ROW.DELETED': false
+    }
+  );
+  return ZtRole.findOne({ ROLEID: roleid }).lean() || 'Rol no encontrado para activado lógico';
+}
+
 async function physicalDeleteRole(req) {
   await connect();
   const roleid = req._.req.query.roleid;
@@ -268,9 +304,11 @@ module.exports = {
   // Usuarios
   getAllUsers,
   getUserById,
+  getAllUsersDesactive,
   createUser,
   updateUser,
   logicalDeleteUser,
+  logicalActivateUser,
   physicalDeleteUser,
   users,
   // Roles
@@ -280,6 +318,7 @@ module.exports = {
   createRole,
   updateRole,
   logicalDeleteRole,
+  logicalActivateRole,
   physicalDeleteRole,
   roles
 };
