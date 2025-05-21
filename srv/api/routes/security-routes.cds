@@ -28,6 +28,10 @@ service SecurityRoute @(path:'/api/security') {
   @Core.Description: 'Obtener usuarios o usuario por ID (en el body se envía userid)'
   @path: 'users'
   function users(userid: String) returns array of User;
+
+  @Core.Description: 'Obtener usuarios auqnue esten desactivados'
+  @path: 'usersAll'
+  function usersAll(userid: String) returns array of User;
   
   @Core.Description: 'Crear usuario'
   @path: 'createuser'
@@ -40,7 +44,12 @@ service SecurityRoute @(path:'/api/security') {
   @Core.Description: 'Borrado lógico de usuario'
   @path: 'deleteusers'
   action deleteusers(userid: String) returns String;
+
+  @Core.Description: 'activado lógico de usuario'
+  @path: 'activateusers'
+  action activateusers(userid: String) returns String;
   
+
   @Core.Description: 'Eliminado físico de usuario'
   @path: 'removeuser'
   action removeuser(userid: String) returns String;
