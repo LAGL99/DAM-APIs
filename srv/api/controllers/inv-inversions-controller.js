@@ -39,7 +39,7 @@ class inversionsClass extends cds.ApplicationService{
             //requesamso ala aruta 
         });
 
-        this.on("turtlesoup", async (req) => {
+        this.on("supertrend", async (req) => {
             const {
                 symbol, startDate, endDate,
                 amount, userId, specs,
@@ -47,7 +47,7 @@ class inversionsClass extends cds.ApplicationService{
             } = req.data;
 
             // Llama tu servicio con los argumentos adecuados
-            return inv.simulateTurtleSoup(
+            return inv.simulateSupertrend(
                 symbol, startDate, endDate,
                 amount, userId, specs,
                 simulationName

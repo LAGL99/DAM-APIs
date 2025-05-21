@@ -39,8 +39,8 @@ service InversionsRoute @(path:'/api/inv'){
     returns array of priceshistory;
 
     @Core.Description: 'Turtle-strategy'
-    @path :'turtlesoup'
-    action turtlesoup(
+    @path :'supertrend'
+    action supertrend(
         symbol     : String,
         startDate  : DateTime,
         endDate    : DateTime,
