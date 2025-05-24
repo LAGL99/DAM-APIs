@@ -47,19 +47,25 @@ type Signal : {
     Price     : Decimal(18,8);
     Reasoning : String;
 }
-entity Simulation {
-    key IdSimulation       : String;              // "SOL_USDT_TBS_20240501_001"
-        IdUser             : String;              // "USER_TEST"
-        IdStrategy         : String;              // "TBS"
-        SimulationName     : String;              // "Turtle Soup Swing SOL/USDT"
-        Symbol             : String;              // "SOL_USDT"
-        StartDate          : DateTime;            // "2024-05-01"
-        EndDate            : DateTime;            // "2024-06-30"
-        Amount             : Decimal(18,8);       // "1000"
-        Specs              : String;              // "Donchian:20&RR:1.5"
-        Result             : Decimal(18,8);       // 30.00
-        PercentageReturn   : Decimal(5,4);        // 0.03
-        Signals            : array of Signal;     // array de señales
-        DetailRow          : array of DetailRow;  // reuso de tu tipo existente
+
+type SpecType : {
+  INDICATOR : String(30);
+  VALUE     : Decimal(18,8);
+};
+
+entity simulation {
+    key IDSIMULATION       : String;              // "SOL_USDT_TBS_20240501_001"
+        USERID             : String;              // "USER_TEST"
+        IDSTRATEGY         : String;              // "TBS"
+        SIMULATIONNAME     : String;              // "Turtle Soup Swing SOL/USDT"
+        SYMBOL             : String;              // "SOL_USDT"
+        STARTDATE          : DateTime;            // "2024-05-01"
+        ENDDATE            : DateTime;            // "2024-06-30"
+        AMOUNT             : Decimal(18,8);       // "1000"
+        SPECS              : array of SpecType;              // "Donchian:20&RR:1.5"
+        RESULT             : Decimal(18,8);       // 30.00
+        PERCENTAGERETURN   : Decimal(5,4);        // 0.03
+        SIGNALS            : array of Signal;     // array de señales
+        DETAILROW          : array of DetailRow;  // reuso de tu tipo existente
 }
 

@@ -12,7 +12,7 @@ using {inv as myinv} from '../models/inv-inversions';
 service InversionsRoute @(path:'/api/inv'){
 
 
-    entity Simulation as projection on myinv.Simulation;
+    entity entsimulation as projection on myinv.simulation;
     entity priceshistory as projection on myinv.priceshistory;
     entity strategies as projection on myinv.strategies;
 
@@ -38,16 +38,8 @@ service InversionsRoute @(path:'/api/inv'){
     function deleteone(prices : priceshistory)
     returns array of priceshistory;
 
-    @Core.Description: 'Turtle-strategy'
-    @path :'supertrend'
-    action supertrend(
-        symbol     : String,
-        startDate  : DateTime,
-        endDate    : DateTime,
-        amount     : Decimal(18,8),
-        userId     : String,
-        specs      : String
-    ) returns Simulation;
+    @path: 'simulation'
+    action simulation(simulation : entsimulation) returns array of entsimulation;
 };
 
 

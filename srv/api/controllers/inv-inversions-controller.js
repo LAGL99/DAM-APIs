@@ -1,63 +1,84 @@
-//1.-importacion de las librerias 
-const cds = require ('@sap/cds');
+//1.-importacion de las librerias
+const cds = require("@sap/cds");
 
+//2.-importar el servicio
+const { simulateSupertrend, reversionSimple } = require("../services/inv-inversions-service");
 
-//2.-importar el servicio 
-const {GetAllPricesHistory,AddOnePricesHistory,UpdateOnePricesHistory,DeleteOnePricesHistory,simulateTurtleSoup} = require('../services/inv-priceshistory-service');
-const inv = require ('../services/inv-priceshistory-service');
+//3.- estructura princiapl  de la clas de contorller
 
-//3.- estructura princiapl  de la clas de contorller 
+class inversionsClass extends cds.ApplicationService {
+  //4.-iniciiarlizarlo de manera asincrona
+  async init() {
+    this.on("getall", async (req) => {
+      return GetAllPricesHistory(req);
+      //requesamso ala aruta
+    });
 
-class inversionsClass extends cds.ApplicationService{
+    this.on("addone", async (req) => {
+      return AddOnePricesHistory(req);
+      //requesamso ala aruta
+    });
 
-    //4.-iniciiarlizarlo de manera asincrona 
-    async init (){
+    this.on("updateone", async (req) => {
+      return UpdateOnePricesHistory(req);
+      //requesamso ala aruta
+    });
 
-        this.on('getall', async (req)=> {
+    this.on("deleteone", async (req) => {
+      return DeleteOnePricesHistory(req);
+      //requesamso ala aruta
+    });
 
-            return GetAllPricesHistory(req);
-            //requesamso ala aruta 
-        });
+    this.on("simulation", async (req) => {
+      try {
+        const { strategy } = req?.req?.query || {};
+        const body = req?.req?.body?.simulation || {}; // Aquí está todo el body
+        console.log(body);
 
+        if (!strategy) {
+          throw new Error(
+            "Falta el parámetro requerido: 'strategy' en los query parameters."
+          );
+        }
+        if (Object.keys(body).length === 0) {
+          throw new Error(
+            "El cuerpo de la solicitud no puede estar vacío. Se esperan parámetros de simulación."
+          );
+        }
 
-        this.on('addone', async (req)=> {
+        let result = "";
+        switch (strategy.toLowerCase()) {
+          case "reversionsimple":
 
-            return AddOnePricesHistory(req);
-            //requesamso ala aruta 
-        });
+            result = await reversionSimple(body);
 
-        this.on('updateone', async (req)=> {
+            return result; 
+           case "supertrend":
 
-            return UpdateOnePricesHistory(req);
-            //requesamso ala aruta 
-        });
+            result = await simulateSupertrend(body);
 
-        
-        this.on('deleteone', async (req)=> {
+            return result; 
 
-            return DeleteOnePricesHistory(req);
-            //requesamso ala aruta 
-        });
+          // Aquí puedes agregar más estrategias en el futuro:
+          // case 'otraEstrategia':
+          //   return await otraFuncionDeEstrategia(body);
 
-        this.on("supertrend", async (req) => {
-            const {
-                symbol, startDate, endDate,
-                amount, userId, specs,
-                simulationName
-            } = req.data;
-
-            // Llama tu servicio con los argumentos adecuados
-            return inv.simulateSupertrend(
-                symbol, startDate, endDate,
-                amount, userId, specs,
-                simulationName
-            );
-        });
-        return await super.init();
-    };
-
-};
-
+          default:
+            throw new Error(`Estrategia no reconocida: ${strategy}`);
+        }
+      } catch (error) {
+        console.error("Error en el controlador de simulación:", error);
+        // Retorna un objeto de error que el framework pueda serializar a JSON.
+        return {
+          ERROR: true,
+          MESSAGE:
+            error.message || "Error al procesar la solicitud de simulación.",
+        };
+      }
+      // );
+    });
+    return await super.init();
+  }
+}
 
 module.exports = inversionsClass;
-
